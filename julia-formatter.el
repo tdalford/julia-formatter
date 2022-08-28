@@ -113,8 +113,9 @@ If it's up and running, do nothing."
 (defun julia-formatter-format-region (begin end)
   "Format region delimited by BEGIN and END  using JuliaFormatter.jl.
 
-Region must have self-contained code.  If not, the region won't be formatted and
-will remain as-is."
+Region must have self-contained code. If not, the region won't be
+formatted and will remain as-is."
+  (interactive "r")
   (julia-formatter--ensure-server)
   (let* ((text-to-be-formatted
           (buffer-substring-no-properties
@@ -205,6 +206,7 @@ See `end-of-defun-function' to understand values of ARG."
 
 ;;;###autoload
 (defun julia-formatter-format-buffer ()
+  (interactive)
   "Format the whole buffer"
   (save-restriction
     (widen)
@@ -237,7 +239,7 @@ saving."
                 (default-value indent-region-function)))
   (when (boundp 'aggressive-indent-modes-to-prefer-defun)
     (add-hook 'aggressive-indent-modes-to-prefer-defun 'julia-mode))
-  (if julia-formatter-mode
+  (if julia-formatter-setup-for-save
       (add-hook 'before-save-hook #'julia-formatter-format-buffer nil t)
     (remove-hook 'before-save-hook #'julia-formatter-format-buffer t)))
 

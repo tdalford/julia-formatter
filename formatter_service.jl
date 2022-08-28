@@ -1,15 +1,15 @@
 # Copyright © 2020 Felipe Lema
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -51,17 +51,30 @@ function format_data(rpc_message)
     original_current_line = string(original_lines[current_line])
     out_text = text_to_format
     if strip(text_to_format) ≠ ""
+        # SELF_ADJUSTED params:
         out_text = format_text(
             text_to_format;
             # options that will not alter the number of lines in text
             # why? because altering the lines of text will confuse the users
             # since they're using this in live coding
-            remove_extra_newlines=false,
-            pipe_to_function_call=false,
-            short_to_long_function_def=false,
-            always_use_return=false,
-            annotate_untyped_fields_with_any=false,
-            always_for_in=false, # see Reactive.jl loops
+
+            # remove_extra_newlines=false,
+            # pipe_to_function_call=false,
+            # short_to_long_function_def=false,
+            # always_use_return=false,
+            # annotate_untyped_fields_with_any=false,
+            # always_for_in=false, # see Reactive.jl loops
+
+            whitespace_ops_in_indices=true,
+            remove_extra_newlines=true,
+            # long_to_short_function_def=true,
+            always_use_return=true,
+            whitespace_in_kwargs=false,
+            format_docstrings=true,
+            join_lines_based_on_source=false,
+            # separate_kwargs_with_semicolon=true,
+            # surround_whereop_typeparameters=true,
+            import_to_using=true,
         )
     end
     # split text into lines, right-stripped, corroctly indented
@@ -72,7 +85,7 @@ function format_data(rpc_message)
         # so we'll keep the whitespace just for the line the user is standing on
         lines[current_line] = original_current_line
     end
-    lines
+    return lines
 end
 
 @doc raw"""
@@ -83,7 +96,7 @@ function write_transport_layer(stream, response)
     response_utf8 = transcode(UInt8, response)
     n = length(response_utf8)
     write(stream, "Content-Length: $n\r\n\r\n")
-    write(stream, response_utf8)
+    return write(stream, response_utf8)
 end
 
 @doc raw"""
@@ -93,7 +106,7 @@ Read "text" and "position" from JSON message and return
 function defun_range(rpc_message)
     text_to_parse = join(rpc_message["params"]["text"], "\n")
     position = rpc_message["params"]["position"]
-    defun_range(text_to_parse, position)
+    return defun_range(text_to_parse, position)
 end
 
 function defun_range(text_to_parse::AbstractString, position::Int64)
@@ -126,15 +139,14 @@ function dispatch_response(rpc_message)
             # this error is catched just below, mind you
             @error string("Unknown method ", rpc_message["method"])
         end
-        catch
-            stack_buffer = IOBuffer()
-            for (exc, bt) in Base.catch_stack()
-                showerror(stack_buffer, exc, bt)
-            end
+    catch
+        stack_buffer = IOBuffer()
+        for (exc, bt) in Base.catch_stack()
+            showerror(stack_buffer, exc, bt)
+        end
         response["error"] = Dict("code" => 0, "message" => String(take!(stack_buffer)))
     end
     return JSON.json(response)
-
 end
 
 @doc raw"""
@@ -165,10 +177,8 @@ function run_server(instream, outstream)
     end
 end
 
-
 # force code compilation just before setting up the server
 format_text("Channel()")
 defun_range("Channel()", 2)
 
 run_server(stdin, stdout)
-
